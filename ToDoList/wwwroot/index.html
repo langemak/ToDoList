@@ -1,0 +1,172 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>ToDo List</title>
+    <style>
+        td {
+            padding: 5px;
+        }
+
+        button {
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Список дел:</h2>
+    <table>
+        <thead><tr><th>Название</th><th>Описание</th><th></th></tr></thead>
+        <tbody>
+        </tbody>
+    </table>
+    <h2>Добавить</h2>
+    <div>
+        <input type="hidden" id="itemId" />
+        <p>
+            Название:<br />
+            <input id="itemName" />
+        </p>
+        <p>
+            Описание:<br />
+            <textarea id="itemDescription"></textarea>
+        </p>
+        <p>
+            <button id="saveBtn">Сохранить</button>
+            <button id="resetBtn">Сбросить</button>
+        </p>
+    </div>
+
+    <script>
+        async function getItems() {
+            const response = await fetch("/api/items", {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const items = await response.json();
+                const rows = document.querySelector("tbody");
+                items.forEach(item => rows.append(row(item)));
+            }
+        }
+        async function getUser(id) {
+            const response = await fetch(`/api/items/${id}`, {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const item = await response.json();
+                document.getElementById("itemId").value = item.id;
+                document.getElementById("itemName").value = item.name;
+                document.getElementById("itemDescription").value = item.description;
+            }
+            else {
+                const error = await response.json();
+            }
+        }
+        async function createUser(itemName, itemDescription) {
+
+            const response = await fetch("api/items", {
+                method: "POST",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: itemName,
+                    description: itemDescription
+                })
+            });
+            if (response.ok === true) {
+                const item = await response.json();
+                document.querySelector("tbody").append(row(item));
+            }
+            else {
+                const error = await response.json();
+                console.log(error.messdescription);
+            }
+        }
+        async function editUser(itemId, itemName, itemDescription) {
+            const response = await fetch("api/items", {
+                method: "PUT",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    id: itemId,
+                    name: itemName,
+                    description: itemDescription
+                })
+            });
+            if (response.ok === true) {
+                const item = await response.json();
+                document.querySelector(`tr[data-rowid='${item.id}']`).replaceWith(row(item));
+            }
+            else {
+                const error = await response.json();
+                console.log(error.messdescription);
+            }
+        }
+        async function deleteUser(id) {
+            const response = await fetch(`/api/items/${id}`, {
+                method: "DELETE",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const item = await response.json();
+                document.querySelector(`tr[data-rowid='${item.id}']`).remove();
+            }
+            else {
+                const error = await response.json();
+                console.log(error.messdescription);
+            }
+        }
+
+        function reset() {
+            document.getElementById("itemId").value =
+                document.getElementById("itemName").value = ""
+            document.getElementById("itemDescription").value = "";
+        }
+
+        function row(item) {
+
+            const tr = document.createElement("tr");
+            tr.setAttribute("data-rowid", item.id);
+
+            const nameTd = document.createElement("td");
+            nameTd.append(item.name);
+            tr.append(nameTd);
+
+            const descriptionTd = document.createElement("td");
+            descriptionTd.append(item.description);
+            tr.append(descriptionTd);
+
+            const linksTd = document.createElement("td");
+
+            const editLink = document.createElement("button");
+            editLink.append("Изменить");
+            editLink.addEventListener("click", async () => await getUser(item.id));
+            linksTd.append(editLink);
+
+            const removeLink = document.createElement("button");
+            removeLink.append("Удалить");
+            removeLink.addEventListener("click", async () => await deleteUser(item.id));
+
+            linksTd.append(removeLink);
+            tr.appendChild(linksTd);
+
+            return tr;
+        }
+        document.getElementById("resetBtn").addEventListener("click", () => reset());
+
+        document.getElementById("saveBtn").addEventListener("click", async () => {
+
+            const id = document.getElementById("itemId").value;
+            const name = document.getElementById("itemName").value;
+            const description = document.getElementById("itemDescription").value;
+            if (id === "")
+                await createUser(name, description);
+            else
+                await editUser(id, name, description);
+            reset();
+        });
+
+        getItems();
+    </script>
+</body>
+</html>
